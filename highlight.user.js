@@ -52,12 +52,6 @@ function $getFileDivs() {
   return $('.file[id^="diff-"]');
 }
 
-function getPaths() {
-  return $getFileDivs().map(function(_, div) {
-    return $(div).find('.meta').attr('data-path');
-  });
-}
-
 function addButtonToFileDiv(idx, div) {
   var $button = $('<a href="#">Highlight</a>')
       .data('file-index', idx)
@@ -75,6 +69,45 @@ function guessLanguage(filename) {
     return m[1];
   } else {
     return undefined;
+  }
+}
+
+// Returns a deferred array of HTML strings, one per line of the file.
+function getHighlightedLines(language, fileUrl) {
+  return $.get(fileUrl).then(function(contents) {
+    var html = hljs.highlight(language, contents, true).value;
+    return codediff.distributeSpans_(html);
+  });
+}
+
+// Adds syntax highlighting to one side or the other.
+// This uses the syntax cache if it's available.
+function applyHighlighting(fileDiv, side) {
+  if (side != LEFT && side != RIGHT) { throw "Invalid side " + side; }
+
+  var $fileDiv = $(fileDiv);
+  var path = $fileDiv.find('.meta').attr('data-path');
+
+  var htmlLines = $fileDiv.data('highlight-' + side);
+  if (!htmlLines) {
+    var language = guessLanguage(path);
+    if (!language) {
+      console.log('Unable to guess language for', path);
+      return;
+    }
+    getHighlightedLines(language, getFileUrl(GITHUB_SYNTAX.pr_info, side, path))
+      .done(function(htmlLines) {
+        $fileDiv.data('highlight-' + side, htmlLines);
+        applyHighlighting(fileDiv, side);  // try it again with a filled cache.
+      });
+  } else {
+    var k = side == 'left' ? 'base' : 'head';
+    $fileDiv.find('td.' + k + '[data-line-number]').map(function(_, el) {
+      var $lineNumberDiv = $(el);
+      var lineNumber = parseInt($lineNumberDiv.attr('data-line-number'), 10);
+      var $code = $lineNumberDiv.next('.blob-code');
+      $code.html(htmlLines[lineNumber - 1]);
+    });
   }
 }
 
@@ -108,37 +141,10 @@ function init() {
 
   $(document).on('click', 'a.syntax-highlight', function(e) {
     e.preventDefault();
-
-    var fileIndex = $(this).data('file-index');
-    var $fileDiv = $($getFileDivs().get(fileIndex));
-    var path = getPaths()[fileIndex];
-
-    var language = guessLanguage(path);
-    if (!language) {
-      console.log('Unable to guess language for', path);
-      return;
-    }
-
-    $.get(getFileUrl(GITHUB_SYNTAX.pr_info, 'right', path)).done(function(contents) {
-      var html = hljs.highlight(language, contents, true).value;
-      GITHUB_SYNTAX.html = html;
-
-      var htmlLines = codediff.distributeSpans_(html);
-      $fileDiv.find('td.head[data-line-number]').map(function(_, el) {
-        var $lineNumberDiv = $(el);
-        var lineNumber = parseInt($lineNumberDiv.attr('data-line-number'), 10);
-        var $code = $lineNumberDiv.next('.blob-code.head');
-        $code.html(htmlLines[lineNumber - 1]);
-      });
-    });
+    var fileDiv = $getFileDivs().get($(this).data('file-index'));
+    applyHighlighting(fileDiv, 'right');
+    applyHighlighting(fileDiv, 'left');
   });
-
-  /*
-  $.get('https://raw.githubusercontent.com/danvk/dygraphs/bacf5ce283d6871ce1c090f29bf5411341622248/auto_tests/tests/dygraph-options-tests.js')
-    .done(function(response) {
-      $(document.body).append($('<div>').text(response));
-    });
-  */
 }
 
 init();

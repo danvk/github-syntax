@@ -1,7 +1,7 @@
 /* Less garish background colors to let that highlighting shine through! */
-.blob-code-addition {
+.blob-code-addition, .blob-num-addition {
   background-color: #efe !important;
 }
-.blob-code-deletion {
+.blob-code-deletion, .blob-num-deletion {
   background-color: #fee !important;
 }
