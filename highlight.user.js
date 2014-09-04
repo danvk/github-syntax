@@ -107,8 +107,8 @@ function applyHighlightingToSide(fileDiv, side) {
       var $lineNumberDiv = $(el);
       var lineNumber = parseInt($lineNumberDiv.attr('data-line-number'), 10);
       var $code = $lineNumberDiv.next('.blob-code');
-      replaceTextChildWithHtml($code.get(0), htmlLines[lineNumber - 1]);
-      $code.addClass('highlighted');
+      fillWithHighlightedCode($code.get(0), htmlLines[lineNumber - 1]);
+      $lineNumberDiv.addClass('highlighted');
     });
     return $.when({success:true});  // a not-so-deferred deferred
   }
@@ -119,19 +119,14 @@ function applyHighlighting(fileDiv) {
                 applyHighlightingToSide(fileDiv, 'right'));
 }
 
-// Find the first text node under el and replace it with the html.
-// If there aren't any text nodes, then the html will be appended.
-function replaceTextChildWithHtml(el, html) {
-  var $textEl = $(el).contents().filter(function() {
-    return this.nodeType != 1; 
-  }).first();
 
-  if ($textEl.length == 0) {
-    $(el).append(html);
-  } else {
-    $textEl.replaceWith(html);
-  }
+// Fill out a code line in the diff, preserving the "add comment" button.
+function fillWithHighlightedCode(el, html) {
+  var $save = $(el).find('.add-line-comment');
+  $(el).html(html)
+      .prepend($save);
 }
+
 
 function init() {
   var pr_spec = getPrSpec();
@@ -166,6 +161,7 @@ function init() {
   $(document).on('click', 'a.syntax-highlight', function(e) {
     e.preventDefault();
     var fileDiv = $getFileDivs().get($(this).data('file-index'));
+    $(this).remove();
 
     // Apply syntax highlighting. When that's done, listen for subtree
     // modifications. These indicate that there may be new lines to highlight.
@@ -181,6 +177,10 @@ function init() {
     };
     var observer = new MutationObserver(addHighlights);  // not observing yet...
     addHighlights();
+  });
+
+  $('.file').on('appear', function() {
+    console.log('appear!', this);
   });
 }
 
