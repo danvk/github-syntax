@@ -1,7 +1,8 @@
 Tasks left:
 x Use less garish background colors
 x Syntax highlight left side of the diff as well
-- Add support for the "more context" buttons
+x Add support for the "more context" buttons
+- I've broken commenting
 - Trigger when you move from "/pull/296" to "/pull/296/files"
 - Highlight automatically
 - Preserve github's character diffs

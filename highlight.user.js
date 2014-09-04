@@ -82,7 +82,7 @@ function getHighlightedLines(language, fileUrl) {
 
 // Adds syntax highlighting to one side or the other.
 // This uses the syntax cache if it's available.
-function applyHighlighting(fileDiv, side) {
+function applyHighlightingToSide(fileDiv, side) {
   if (side != LEFT && side != RIGHT) { throw "Invalid side " + side; }
 
   var $fileDiv = $(fileDiv);
@@ -95,20 +95,29 @@ function applyHighlighting(fileDiv, side) {
       console.log('Unable to guess language for', path);
       return;
     }
-    getHighlightedLines(language, getFileUrl(GITHUB_SYNTAX.pr_info, side, path))
-      .done(function(htmlLines) {
+    return getHighlightedLines(language, getFileUrl(GITHUB_SYNTAX.pr_info, side, path))
+      .then(function(htmlLines) {
         $fileDiv.data('highlight-' + side, htmlLines);
-        applyHighlighting(fileDiv, side);  // try it again with a filled cache.
+        return applyHighlightingToSide(fileDiv, side);  // try again with a filled cache.
       });
   } else {
-    var k = side == 'left' ? 'base' : 'head';
-    $fileDiv.find('td.' + k + '[data-line-number]').map(function(_, el) {
+    // The line number <td> is either the first in its row (left side) or third (right side).
+    var k = side == 'left' ? 1 : 3;
+    $fileDiv.find('td.blob-num[data-line-number]:not(.highlighted):nth-child(' + k + ')').map(function(_, el) {
       var $lineNumberDiv = $(el);
       var lineNumber = parseInt($lineNumberDiv.attr('data-line-number'), 10);
       var $code = $lineNumberDiv.next('.blob-code');
-      $code.html(htmlLines[lineNumber - 1]);
+      $code
+          .html(htmlLines[lineNumber - 1])
+          .addClass('highlighted');
     });
+    return $.when({success:true});  // a not-so-deferred deferred
   }
+}
+
+function applyHighlighting(fileDiv) {
+  return $.when(applyHighlightingToSide(fileDiv, 'left'),
+                applyHighlightingToSide(fileDiv, 'right'));
 }
 
 function init() {
@@ -142,8 +151,21 @@ function init() {
   $(document).on('click', 'a.syntax-highlight', function(e) {
     e.preventDefault();
     var fileDiv = $getFileDivs().get($(this).data('file-index'));
-    applyHighlighting(fileDiv, 'right');
-    applyHighlighting(fileDiv, 'left');
+
+    // Apply syntax highlighting. When that's done, listen for subtree
+    // modifications. These indicate that there may be new lines to highlight.
+    // The tricky this is that we don't want to ever be listening for subtree
+    // modifications when we're about to do some highlighting.
+    var observer;
+    var addHighlights = function() {
+      observer.disconnect();
+      applyHighlighting(fileDiv)
+        .done(function() {
+          observer.observe(fileDiv, {childList: true, subtree: true});
+        });
+    };
+    var observer = new MutationObserver(addHighlights);  // not observing yet...
+    addHighlights();
   });
 }
 
