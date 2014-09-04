@@ -1,23 +1,23 @@
-{ "name": "github syntax"
-, "version": "0.1.0"
-, "manifest_version": 2
-, "icons":
-  { "128": "icon-128.png"
-  }
-, "description": "Adds syntax highlighting to github's split diff pull request view."
-, "content_scripts":
-  [ { "js":      [ "lib/jquery.min.js",
-                   "highlight.user.js",
-                   "codediff.js",
-                   "difflib.js",
-                   "highlightjs/highlight.pack.js"
-                 ]
-    , "css":     [
-                   "highlightjs/styles/googlecode.css"
-                 ]
-    , "matches": [ "https://*/*/pull/*"
-                 ]
-    , "run_at": "document_idle"
-    }
-  ]
+{
+  "name": "github syntax",
+  "version": "0.1.0",
+  "manifest_version": 2,
+  "icons": {
+    "128": "icon-128.png"
+  },
+  "description": "Adds syntax highlighting to github's split diff pull request view.",
+  "content_scripts": [{
+    "js": [
+      "lib/jquery.min.js",
+      "highlight.user.js",
+      "codediff.js",
+      "difflib.js",
+      "highlightjs/highlight.pack.js"
+    ], "css": [
+      "highlight.css",
+      "highlightjs/styles/googlecode.css"
+    ], "matches": [
+      "https://*/*/pull/*"
+    ], "run_at": "document_idle"
+  }]
 }

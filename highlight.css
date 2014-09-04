@@ -1,0 +1,7 @@
+/* Less garish background colors to let that highlighting shine through! */
+.blob-code-addition {
+  background-color: #efe !important;
+}
+.blob-code-deletion {
+  background-color: #fee !important;
+}
