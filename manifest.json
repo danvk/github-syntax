@@ -18,7 +18,7 @@
       "highlight.css",
       "highlightjs/styles/googlecode.css"
     ], "matches": [
-      "https://*/*/pull/*"
+      "https://github.com/*/pull/*"
     ], "run_at": "document_idle"
   }]
 }

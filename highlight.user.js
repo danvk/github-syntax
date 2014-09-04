@@ -120,12 +120,15 @@ function fillWithHighlightedCode(el, html) {
 }
 
 
+var has_inited = false;
 function init() {
+  if (has_inited) return;
   var pr_spec = getPrSpec();
   if (!pr_spec) {
     console.log('unable to get pr spec, bailing');
     return;
   }
+  has_inited = true;
 
   GITHUB_SYNTAX.pr_spec = pr_spec;
   console.log(pr_spec);
@@ -158,3 +161,10 @@ function init() {
 }
 
 init();
+
+$('.tabnav-tabs').on('click', 'li', function() {
+  // hack to get the new URL, not the old one.
+  window.setTimeout(function() {
+    init();
+  }, 200);
+});

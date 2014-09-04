@@ -4,6 +4,9 @@ x Syntax highlight left side of the diff as well
 x Add support for the "more context" buttons
 x I've broken commenting
 x Highlight automatically when a diff comes into view
-- Trigger when you move from "/pull/296" to "/pull/296/files"
+x Trigger when you move from "/pull/296" to "/pull/296/files"
 - Preserve github's character diffs
+- Don't fetch raw files for unified diffs.
+- Keep a local cache of files to avoid repeated fetches.
 - Make an icon
+- Guess language when it's not obvious from extension?
