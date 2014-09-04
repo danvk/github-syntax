@@ -1,0 +1,95 @@
+This minified FN gets called when you click the expander:
+
+t = function(t, e, n) {
+        var i, s, a, r, o, c, l, u;
+        for (n = parseInt(n, 10), l = $(t).find(".js-expand"), o = 0, c = l.length; c > o; o++) {
+            s = l[o],
+            i = "R" === e ? "data-right-range" : "data-left-range";
+            u = s.getAttribute(i).split("-");
+            r = u[0];
+            a = u[1];
+            if (parseInt(r, 10) <= n && n <= parseInt(a, 10)) {
+                return s;
+            }
+        }
+        return null
+    }
+
+When I click this on
+https://github.com/danvk/dygraphs/pull/296/files#diff-29d4cec18c17cc1681fff88bec8fcc2cR171
+on auto_tests/tests/to_dom_coords.js, which is missing lines 1-171, I get:
+
+  t = div#diff-1
+  e = "R"
+  n = "171"
+
+
+  n = 171
+  o = 0
+  s = a.diff-expander.js-expand
+  i = "data-right-range"
+  u = ['1', '171']
+  r = '1'
+  a = '171'
+
+  --> returns a.diff-expander.js-expand
+
+e = function(i, s) {
+        var a, r, o, c, l, u, d, h, f;
+        return null == s && (s = !1), i && (u = n(i)) && (f = u[0], a = u[1], d = u[2], l = u[3], !document.getElementById(i.slice(1)) && (c = $(document.getElementsByName(a)).next()[0]) && (o = t(c, d, l))) ? (h = o.getAttribute("data-url"), r = {anchor: a}, $.ajax({url: h,data: r}).then(function(t) {
+            var n, a, r, c, l, u;
+            if (n = $(o).closest(".js-expandable-line"), a = n.next(".file-diff-line"), a.preservingScrollPosition(function() {
+                return n.replaceWith(t)
+            }), c = document.getElementById(i.slice(1))) {
+                if (u = $(c).overflowOffset(), l = u.top, r = u.bottom, 0 > l || 0 > r)
+                    return $(c).scrollTo()
+            } else if (s)
+                return e(i)
+        })) : void 0
+    }
+
+
+It adds 20 lines at a time when you click the expander.
+
+github's network request for more diff is:
+https://github.com/danvk/dygraphs/blob_excerpt/70518a1055767b134f63e7998c64a78984f70b65
+  /auto_tests/tests/to_dom_coords.js
+  ? left_hunk_size=19
+  & next_line_num_left=172
+  & next_line_num_right=172
+  & prev_line_num_left=
+  & prev_line_num_right=
+  & right_hunk_size=25
+  & anchor=diff-29d4cec18c17cc1681fff88bec8fcc2c
+
+The response is HTML for both sides.
+
+left_hunk_size is the size of the left diff hunk, right_hunk_size is analogous.
+
+Next request is:
+
+https://github.com/danvk/dygraphs/blob_excerpt/70518a1055767b134f63e7998c64a78984f70b65
+  /auto_tests/tests/to_dom_coords.js
+  ?left_hunk_size=39
+  &next_line_num_left=152
+  &next_line_num_right=152
+  &prev_line_num_left=0
+  &prev_line_num_right=0
+  &right_hunk_size=45
+  &anchor=diff-29d4cec18c17cc1681fff88bec8fcc2c
+
+Seems like it only ever gives you 20 lines at a time. :(
+
+Another approach would be to fetch raw versions of both sides, syntax highlight
+those and then swap in the lines that are visible on github.
+--> more promising!
+
+
+Bits of info I need:
+  $('.file .meta').attr('data-path') = 'auto_tests/tests/dygraph-options-tests.js'
+
+This grabs hrefs containing the after sha & path.
+  $('.file .meta .actions a:visible:not(.octicon-button)')
+
+The after blob is the same for all files in the diff.
+
