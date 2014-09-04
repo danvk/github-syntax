@@ -107,9 +107,8 @@ function applyHighlightingToSide(fileDiv, side) {
       var $lineNumberDiv = $(el);
       var lineNumber = parseInt($lineNumberDiv.attr('data-line-number'), 10);
       var $code = $lineNumberDiv.next('.blob-code');
-      $code
-          .html(htmlLines[lineNumber - 1])
-          .addClass('highlighted');
+      replaceTextChildWithHtml($code.get(0), htmlLines[lineNumber - 1]);
+      $code.addClass('highlighted');
     });
     return $.when({success:true});  // a not-so-deferred deferred
   }
@@ -120,6 +119,20 @@ function applyHighlighting(fileDiv) {
                 applyHighlightingToSide(fileDiv, 'right'));
 }
 
+// Find the first text node under el and replace it with the html.
+// If there aren't any text nodes, then the html will be appended.
+function replaceTextChildWithHtml(el, html) {
+  var $textEl = $(el).contents().filter(function() {
+    return this.nodeType != 1; 
+  }).first();
+
+  if ($textEl.length == 0) {
+    $(el).append(html);
+  } else {
+    $textEl.replaceWith(html);
+  }
+}
+
 function init() {
   var pr_spec = getPrSpec();
   if (!pr_spec) {
@@ -128,6 +141,7 @@ function init() {
   }
 
   // Remove the superfluous and copy/paste-hostile +/- signs.
+  /*
   $('.blob-code-addition, .blob-code-deletion').each(function(idx, el) {
     var text = $(el).text();
     var newtext = text.replace(/^[-+]/, '')
@@ -135,6 +149,7 @@ function init() {
       $(el).text(newtext);
     }
   });
+  */
 
   // Add "highlight" buttons to each diff.
   $getFileDivs().each(addButtonToFileDiv);
