@@ -52,15 +52,6 @@ function $getFileDivs() {
   return $('.file[id^="diff-"]');
 }
 
-function addButtonToFileDiv(idx, div) {
-  var $button = $('<a href="#">Highlight</a>')
-      .data('file-index', idx)
-      .addClass('minibutton tooltipped tooltipped-n syntax-highlight')
-      .css('margin-right', '5px')
-      .attr('aria-label', 'Apply syntax highlighting to this diff.');
-  $($(div).find('.actions a').get(0)).before($button);
-}
-
 function guessLanguage(filename) {
   var m = /\.([^.]+)$/.exec(filename);
   if (m) {
@@ -115,6 +106,7 @@ function applyHighlightingToSide(fileDiv, side) {
 }
 
 function applyHighlighting(fileDiv) {
+  $(fileDiv).addClass('highlighted');
   return $.when(applyHighlightingToSide(fileDiv, 'left'),
                 applyHighlightingToSide(fileDiv, 'right'));
 }
@@ -135,33 +127,18 @@ function init() {
     return;
   }
 
-  // Remove the superfluous and copy/paste-hostile +/- signs.
-  /*
-  $('.blob-code-addition, .blob-code-deletion').each(function(idx, el) {
-    var text = $(el).text();
-    var newtext = text.replace(/^[-+]/, '')
-    if (text.length != newtext.length) {
-      $(el).text(newtext);
-    }
-  });
-  */
-
-  // Add "highlight" buttons to each diff.
-  $getFileDivs().each(addButtonToFileDiv);
-
   GITHUB_SYNTAX.pr_spec = pr_spec;
   console.log(pr_spec);
 
   console.log('Fetching PR info...');
   getPrInfo(pr_spec).done(function(pr_info) {
-    console.log(pr_info);
     GITHUB_SYNTAX.pr_info = pr_info;
   });
 
-  $(document).on('click', 'a.syntax-highlight', function(e) {
-    e.preventDefault();
-    var fileDiv = $getFileDivs().get($(this).data('file-index'));
-    $(this).remove();
+  $getFileDivs().appear({force_process:true});
+  $(document.body).on('appear', '.file[id^="diff-"]:not(.highlight-seen)', function() {
+    var fileDiv = this;
+    $(fileDiv).addClass('highlight-seen');
 
     // Apply syntax highlighting. When that's done, listen for subtree
     // modifications. These indicate that there may be new lines to highlight.
@@ -177,10 +154,6 @@ function init() {
     };
     var observer = new MutationObserver(addHighlights);  // not observing yet...
     addHighlights();
-  });
-
-  $('.file').on('appear', function() {
-    console.log('appear!', this);
   });
 }
 

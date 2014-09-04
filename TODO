@@ -3,6 +3,7 @@ x Use less garish background colors
 x Syntax highlight left side of the diff as well
 x Add support for the "more context" buttons
 x I've broken commenting
+x Highlight automatically when a diff comes into view
 - Trigger when you move from "/pull/296" to "/pull/296/files"
-- Highlight automatically
 - Preserve github's character diffs
+- Make an icon

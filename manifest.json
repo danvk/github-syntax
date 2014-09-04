@@ -9,10 +9,11 @@
   "content_scripts": [{
     "js": [
       "lib/jquery.min.js",
-      "highlight.user.js",
       "codediff.js",
       "difflib.js",
-      "highlightjs/highlight.pack.js"
+      "jquery.appear.js",
+      "highlightjs/highlight.pack.js",
+      "highlight.user.js"
     ], "css": [
       "highlight.css",
       "highlightjs/styles/googlecode.css"
