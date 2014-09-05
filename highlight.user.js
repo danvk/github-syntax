@@ -45,7 +45,7 @@ function getFileUrl(pr_info, side, path) {
   var side_info = pr_info[side == LEFT ? 'base' : 'head'];
   var sha = side_info.sha;
 
-  return 'https://raw.githubusercontent.com/' + side_info.repo.full_name + '/' + sha + '/' + path;
+  return 'https://rawgit.com/' + side_info.repo.full_name + '/' + sha + '/' + path;
 }
 
 function $getFileDivs() {
@@ -65,10 +65,13 @@ function guessLanguage(filename) {
 
 // Returns a deferred array of HTML strings, one per line of the file.
 function getHighlightedLines(language, fileUrl) {
-  return $.get(fileUrl).then(function(contents) {
-    var html = hljs.highlight(language, contents, true).value;
-    return codediff.distributeSpans_(html);
-  });
+  return $.ajax(fileUrl, {dataType: "text"}).then(
+    function(contents) {
+      var html = hljs.highlight(language, contents, true).value;
+      return codediff.distributeSpans_(html);
+    }, function(response, errortype, errordetails) {
+      console.warn('Request for', fileUrl, 'failed', errortype, errordetails);
+    });
 }
 
 // Adds syntax highlighting to one side or the other.
@@ -136,27 +139,27 @@ function init() {
   console.log('Fetching PR info...');
   getPrInfo(pr_spec).done(function(pr_info) {
     GITHUB_SYNTAX.pr_info = pr_info;
-  });
 
-  $getFileDivs().appear({force_process:true});
-  $(document.body).on('appear', '.file[id^="diff-"]:not(.highlight-seen)', function() {
-    var fileDiv = this;
-    $(fileDiv).addClass('highlight-seen');
+    $getFileDivs().appear({force_process:true});
+    $(document.body).on('appear', '.file[id^="diff-"]:not(.highlight-seen)', function() {
+      var fileDiv = this;
+      $(fileDiv).addClass('highlight-seen');
 
-    // Apply syntax highlighting. When that's done, listen for subtree
-    // modifications. These indicate that there may be new lines to highlight.
-    // The tricky this is that we don't want to ever be listening for subtree
-    // modifications when we're about to do some highlighting.
-    var observer;
-    var addHighlights = function() {
-      observer.disconnect();
-      applyHighlighting(fileDiv)
-        .done(function() {
-          observer.observe(fileDiv, {childList: true, subtree: true});
-        });
-    };
-    var observer = new MutationObserver(addHighlights);  // not observing yet...
-    addHighlights();
+      // Apply syntax highlighting. When that's done, listen for subtree
+      // modifications. These indicate that there may be new lines to highlight.
+      // The tricky this is that we don't want to ever be listening for subtree
+      // modifications when we're about to do some highlighting.
+      var observer;
+      var addHighlights = function() {
+        observer.disconnect();
+        applyHighlighting(fileDiv)
+          .done(function() {
+            observer.observe(fileDiv, {childList: true, subtree: true});
+          });
+      };
+      var observer = new MutationObserver(addHighlights);  // not observing yet...
+      addHighlights();
+    });
   });
 }
 

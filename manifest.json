@@ -14,11 +14,14 @@
       "jquery.appear.js",
       "highlightjs/highlight.pack.js",
       "highlight.user.js"
-    ], "css": [
+    ],
+    "css": [
       "highlight.css",
       "highlightjs/styles/googlecode.css"
-    ], "matches": [
+    ],
+    "matches": [
       "https://github.com/*/pull/*"
-    ], "run_at": "document_idle"
+    ],
+    "run_at": "document_idle"
   }]
 }

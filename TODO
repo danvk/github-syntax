@@ -6,6 +6,8 @@ x I've broken commenting
 x Highlight automatically when a diff comes into view
 x Trigger when you move from "/pull/296" to "/pull/296/files"
 x Make an icon
+- See if I can get blobs via the github API
+- Show a message when you browse a private repo.
 - Preserve github's character diffs
 - Don't fetch raw files for unified diffs.
 - Keep a local cache of files to avoid repeated fetches.
