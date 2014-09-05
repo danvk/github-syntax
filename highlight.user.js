@@ -45,7 +45,7 @@ function getFileUrl(pr_info, side, path) {
   var side_info = pr_info[side == LEFT ? 'base' : 'head'];
   var sha = side_info.sha;
 
-  return 'https://rawgit.com/' + side_info.repo.full_name + '/' + sha + '/' + path;
+  return 'https://cdn.rawgit.com/' + side_info.repo.full_name + '/' + sha + '/' + path;
 }
 
 function $getFileDivs() {
