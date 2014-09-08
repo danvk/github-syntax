@@ -57,6 +57,7 @@ function guessLanguage(filename) {
   if (m) {
     var ext = m[1];
     if (ext == 'py') return 'python';
+    if (ext == 'sh') return 'bash';
     return m[1];
   } else {
     return undefined;
