@@ -109,10 +109,39 @@ function applyHighlightingToSide(fileDiv, side) {
   }
 }
 
+
+var LoadingIndicator = function(fileDiv) {
+  this.fileDiv = fileDiv;
+  this.$loading =
+      $('<div class="github-syntax-loading">Highlighting&hellip;</div>')
+      .addClass('tooltipped tooltipped-n')
+      .attr('aria-label', 'The github-syntax Chrome extension is syntax highlighting this diff.');
+  $($(this.fileDiv).find('.actions a').get(0)).before(this.$loading);
+};
+
+LoadingIndicator.prototype.done = function() {
+  this.$loading.remove();
+};
+
+LoadingIndicator.prototype.showError = function(message) {
+  console.warn('Highlighting failed', message);
+  this.$loading
+    .attr('aria-label', 'Syntax highlighting failed for this diff. See console for details.')
+    .addClass('github-syntax-error')
+    .text('Highlighting failed');
+};
+
+
 function applyHighlighting(fileDiv) {
-  $(fileDiv).addClass('highlighted');
+  $(fileDiv).addClass('highlighted');  // blocks subsequent highlighting attempts
+  var loading = new LoadingIndicator(fileDiv);
   return $.when(applyHighlightingToSide(fileDiv, 'left'),
-                applyHighlightingToSide(fileDiv, 'right'));
+                applyHighlightingToSide(fileDiv, 'right'))
+    .then(function() {
+      loading.done();
+    }).fail(function(msg) {
+      loading.showError(msg);
+    });
 }
 
 

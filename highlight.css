@@ -5,3 +5,13 @@
 .blob-code-deletion, .blob-num-deletion {
   background-color: #fee !important;
 }
+
+.github-syntax-loading {
+  display: block;
+  float: left;
+  margin-right: 10px;
+}
+
+.github-syntax-error {
+  color: red;
+}
