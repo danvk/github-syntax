@@ -20,7 +20,7 @@
       "highlightjs/styles/googlecode.css"
     ],
     "matches": [
-      "https://github.com/*/pull/*"
+      "https://github.com/*"
     ],
     "run_at": "document_idle"
   }]

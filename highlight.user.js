@@ -153,15 +153,15 @@ function fillWithHighlightedCode(el, html) {
 }
 
 
-var has_inited = false;
+var inited_spec = '';
 function init() {
-  if (has_inited) return;
   var pr_spec = getPrSpec();
   if (!pr_spec) {
-    console.log('unable to get pr spec, bailing');
-    return;
+    return;  // Probably not a Pull Request view.
   }
-  has_inited = true;
+  var this_spec = JSON.stringify(pr_spec);
+  if (this_spec == inited_spec) return;  // nothing to do.
+  inited_spec = this_spec;
 
   GITHUB_SYNTAX.pr_spec = pr_spec;
   console.log(pr_spec);
@@ -170,8 +170,9 @@ function init() {
   getPrInfo(pr_spec).done(function(pr_info) {
     GITHUB_SYNTAX.pr_info = pr_info;
 
+    $(document.body).off('appear.github-syntax');  // there can only be one.
     $getFileDivs().appear({force_process:true});
-    $(document.body).on('appear', '.file[id^="diff-"]:not(.highlight-seen)', function() {
+    $(document.body).on('appear.github-syntax', '.file[id^="diff-"]:not(.highlight-seen)', function() {
       var fileDiv = this;
       $(fileDiv).addClass('highlight-seen');
 
@@ -195,9 +196,14 @@ function init() {
 
 init();
 
-$('.tabnav-tabs').on('click', 'li', function() {
-  // hack to get the new URL, not the old one.
-  window.setTimeout(function() {
-    init();
-  }, 200);
-});
+// Detect in-page navigations, which might result in files to highlight.
+// It would be nice not to poll, but I can't find a good way to avoid it!
+var lastLocation = document.location.href;
+window.setInterval(function() {
+  var loc = document.location.href;
+  if (loc == lastLocation) return;
+  lastLocation = loc;
+
+  console.log('Detected URL change!');
+  init();
+}, 500);
