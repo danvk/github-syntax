@@ -15,3 +15,8 @@
 .github-syntax-error {
   color: red;
 }
+
+/* omission from googlecode.css which is helpful for Markdown */
+.hljs-header {
+  font-weight: bold;
+}
