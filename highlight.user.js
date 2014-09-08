@@ -190,7 +190,12 @@ LoadingIndicator.prototype.showError = function(message) {
 
 
 function applyHighlighting(fileDiv) {
+  if ($(fileDiv).find('.suppressed').length > 0) {
+    return $.when({});  // no point in highlighting this.
+  }
+
   $(fileDiv).addClass('highlighted');  // blocks subsequent highlighting attempts
+
   var loading = new LoadingIndicator(fileDiv);
   return $.when(applyHighlightingToSide(fileDiv, 'left'),
                 applyHighlightingToSide(fileDiv, 'right'))
