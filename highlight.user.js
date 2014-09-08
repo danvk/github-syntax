@@ -99,10 +99,16 @@ function guessLanguage(filename) {
     var ext = m[1];
     if (ext == 'py') return 'python';
     if (ext == 'sh') return 'bash';
-    return m[1];
-  } else {
-    return undefined;
+    if (ext == 'md') return 'markdown';
+    return m[1].toLowerCase();
+  };
+  
+  // Highlighting based purely on file name, e.g. "Makefile".
+  m = /(?:.*\/)?([^\/]*)$/.exec(filename);
+  if (m && m[1] == 'Makefile') {
+    return 'makefile';
   }
+  return undefined;
 }
 
 // Returns a deferred array of HTML strings, one per line of the file.
