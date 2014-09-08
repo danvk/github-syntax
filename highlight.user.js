@@ -9,42 +9,84 @@
 // Available in console w/ context chrome-extension://ij...obn
 GITHUB_SYNTAX = {};
 
-function getPrSpec() {
+function getSpec() {
   var loc = document.location;
   if (loc.hostname != 'github.com') return null;
 
   var p = loc.pathname;
   var m = p.match(/^\/([^\/]+)\/([^\/]+)\/pull\/([0-9]+)\/files/);
-  if (!m) return null;
+  if (m) {
+    return {
+      owner: m[1],
+      repo: m[2],
+      pull_number: m[3]
+    };
+  } else if (m = p.match(/^\/([^\/]+)\/([^\/]+)\/commit\/([0-9a-f]+)/)) {
+    return {
+      owner: m[1],
+      repo: m[2],
+      commit: m[3]
+    };
+  }
 
-  return {
-    owner: m[1],
-    repo: m[2],
-    pull_number: m[3]
-  };
+  return null;
 }
 
-function getPrInfo(spec) {
-  var url = 'https://api.github.com/repos/' + spec.owner + '/' + spec.repo + '/pulls/' + spec.pull_number;
-  return $.ajax({
-    dataType: "json",
-    url: url,
-    data: null
-  });
+function getDiffInfo(spec) {
+  if ('pull_number' in spec) {
+    var url = 'https://api.github.com/repos/' + spec.owner + '/' + spec.repo + '/pulls/' + spec.pull_number;
+    return $.ajax({
+      dataType: "json",
+      url: url,
+      data: null
+    }).then(function(pr_info) {
+      return {
+        'left': {
+          'owner': pr_info.base.repo.owner.login,
+          'repo': pr_info.base.repo.name,
+          'sha': pr_info.base.sha
+        },
+        'right': {
+          'owner': spec.owner,
+          'repo': spec.repo,
+          'sha': pr_info.head.sha
+        }
+      };
+    });
+  } else if ('commit' in spec) {
+    // TODO: what about commits with multiple parents?
+    var $parentSha = $('.commit-meta .sha[data-hotkey="p"]');
+    if ($parentSha.length != 1) return null;
+    var m = $parentSha.attr('href').match(/\/([0-9a-f]+)$/);
+    if (!m) {
+      console.warn('Unable to parse commit link', $parentSha.attr('href'));
+      return null;
+    }
+    return $.when({
+      'left': {
+        'owner': spec.owner,
+        'repo': spec.repo,
+        'sha': m[1]
+      },
+      'right': {
+        'owner': spec.owner,
+        'repo': spec.repo,
+        'sha': spec.commit
+      }
+    });
+  }
 }
 
 var LEFT = 'left',
     RIGHT = 'right';
 
-function getFileUrl(pr_info, side, path) {
+function getFileUrl(diff_info, side, path) {
   if (side != LEFT && side != RIGHT) {
     throw "Invalid side " + side;
   }
+  var spec = diff_info[side];
 
-  var side_info = pr_info[side == LEFT ? 'base' : 'head'];
-  var sha = side_info.sha;
-
-  return 'https://cdn.rawgit.com/' + side_info.repo.full_name + '/' + sha + '/' + path;
+  return 'https://cdn.rawgit.com/' + spec.owner + '/' + spec.repo + '/' + spec.sha + '/' + path;
 }
 
 function $getFileDivs() {
@@ -89,7 +131,7 @@ function applyHighlightingToSide(fileDiv, side) {
       console.log('Unable to guess language for', path);
       return;
     }
-    return getHighlightedLines(language, getFileUrl(GITHUB_SYNTAX.pr_info, side, path))
+    return getHighlightedLines(language, getFileUrl(GITHUB_SYNTAX.diff_info, side, path))
       .then(function(htmlLines) {
         $fileDiv.data('highlight-' + side, htmlLines);
         return applyHighlightingToSide(fileDiv, side);  // try again with a filled cache.
@@ -154,11 +196,11 @@ function fillWithHighlightedCode(el, html) {
 
 var inited_spec = '';
 function init() {
-  var pr_spec = getPrSpec();
-  if (!pr_spec) {
+  var spec = getSpec();
+  if (!spec) {
     return;  // Probably not a Pull Request view.
   }
-  var this_spec = JSON.stringify(pr_spec);
+  var this_spec = JSON.stringify(spec);
   if (this_spec == inited_spec) return;  // nothing to do.
   inited_spec = this_spec;
 
@@ -167,10 +209,10 @@ function init() {
     return;
   }
 
-  GITHUB_SYNTAX.pr_spec = pr_spec;
+  GITHUB_SYNTAX.spec = spec;
 
-  getPrInfo(pr_spec).done(function(pr_info) {
-    GITHUB_SYNTAX.pr_info = pr_info;
+  getDiffInfo(spec).done(function(diff_info) {
+    GITHUB_SYNTAX.diff_info = diff_info;
 
     $(document.body).off('appear.github-syntax');  // there can only be one.
     $getFileDivs().appear({force_process:true});
