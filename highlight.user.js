@@ -124,11 +124,21 @@ function applyHighlightingToSide(fileDiv, side) {
   var $fileDiv = $(fileDiv);
   var path = $fileDiv.find('.meta').attr('data-path');
 
+  // Don't attempt to highlight a pure add or pure delete. It will fail.
+  if ((side == LEFT && $fileDiv.find('td.base').length == 0) ||
+      (side == RIGHT && $fileDiv.find('td.head').length == 0)) {
+    return { 'success': 'Nothing to do.' };
+  }
+
   var htmlLines = $fileDiv.data('highlight-' + side);
   if (!htmlLines) {
     var language = guessLanguage(path);
     if (!language) {
       console.log('Unable to guess language for', path);
+      return;
+    }
+    if (language && !hljs.getLanguage(language)) {
+      console.warn('Unable to highlight language', language);
       return;
     }
     return getHighlightedLines(language, getFileUrl(GITHUB_SYNTAX.diff_info, side, path))
@@ -204,7 +214,7 @@ function init() {
   if (this_spec == inited_spec) return;  // nothing to do.
   inited_spec = this_spec;
 
-  if ($('td.blob-code.head').length == 0) {
+  if ($('.file-diff-split').length == 0) {
     // This is an inline diff view, not a split diff view.
     return;
   }
