@@ -26,7 +26,6 @@ function getPrSpec() {
 
 function getPrInfo(spec) {
   var url = 'https://api.github.com/repos/' + spec.owner + '/' + spec.repo + '/pulls/' + spec.pull_number;
-  console.log(url);
   return $.ajax({
     dataType: "json",
     url: url,
@@ -163,10 +162,13 @@ function init() {
   if (this_spec == inited_spec) return;  // nothing to do.
   inited_spec = this_spec;
 
-  GITHUB_SYNTAX.pr_spec = pr_spec;
-  console.log(pr_spec);
+  if ($('td.blob-code.head').length == 0) {
+    // This is an inline diff view, not a split diff view.
+    return;
+  }
 
-  console.log('Fetching PR info...');
+  GITHUB_SYNTAX.pr_spec = pr_spec;
+
   getPrInfo(pr_spec).done(function(pr_info) {
     GITHUB_SYNTAX.pr_info = pr_info;
 
@@ -204,6 +206,5 @@ window.setInterval(function() {
   if (loc == lastLocation) return;
   lastLocation = loc;
 
-  console.log('Detected URL change!');
   init();
 }, 500);
