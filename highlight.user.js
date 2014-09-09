@@ -200,6 +200,7 @@ function applyHighlighting(fileDiv) {
   return $.when(applyHighlightingToSide(fileDiv, 'left'),
                 applyHighlightingToSide(fileDiv, 'right'))
     .then(function() {
+      addCharacterDiffs(fileDiv);
       loading.done();
     }).fail(function(msg) {
       loading.showError(msg);
@@ -207,11 +208,40 @@ function applyHighlighting(fileDiv) {
 }
 
 
+// Look for lines that fillWithHighlightedCode() has hinted have character
+// differences. github computes these on its own but codediff.js does it
+// better.
+function addCharacterDiffs(fileDiv) {
+  $(fileDiv).find('tr:has(.github-syntax-chardiff)').each(function(_, tr) {
+    var $cells = $(tr).find('.github-syntax-chardiff');
+    if ($cells.length != 2) return;
+    $cells.removeClass('github-syntax-chardiff');  // we've got 'em.
+
+    // Temporarily remove the line comment buttons, which confuse codediff.js
+    var $beforeCell = $($cells.get(0)),
+        $afterCell = $($cells.get(1)),
+        $beforeSave = $beforeCell.find('.add-line-comment');
+        $afterSave = $afterCell.find('.add-line-comment');
+
+    $beforeSave.remove();
+    $afterSave.remove();
+
+    codediff.addCharacterDiffs_($beforeCell.get(0), $afterCell.get(0));
+    $beforeCell.prepend($beforeSave);
+    $afterCell.prepend($afterSave);
+  });
+}
+
+
 // Fill out a code line in the diff, preserving the "add comment" button.
 function fillWithHighlightedCode(el, html) {
   var $save = $(el).find('.add-line-comment');
+  var $chardiff = $(el).find('.x');
   $(el).html(html)
       .prepend($save);
+  if ($chardiff.length) {
+    $(el).addClass('github-syntax-chardiff');  // candidate for character diffs.
+  }
 }
 
 

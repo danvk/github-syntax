@@ -20,3 +20,13 @@
 .hljs-header {
   font-weight: bold;
 }
+
+
+/* less garish character differences */
+.char-delete {
+  background-color: #fcc;
+}
+
+.char-insert {
+  background-color: #cfc;
+}
