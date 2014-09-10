@@ -310,6 +310,8 @@ function init() {
       var observer = new MutationObserver(addHighlights);  // not observing yet...
       addHighlights();
     });
+  }).fail(function(err) {
+    console.warn('Unable to get diff left/right SHAs', err);
   });
 }
 
