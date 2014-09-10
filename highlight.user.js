@@ -112,10 +112,18 @@ function guessLanguage(filename) {
 }
 
 // Returns a deferred array of HTML strings, one per line of the file.
-function getHighlightedLines(language, fileUrl) {
+function getHighlightedLines(language, path, fileUrl) {
   return $.ajax(fileUrl, {dataType: "text"}).then(
     function(contents) {
-      var html = hljs.highlight(language, contents, true).value;
+      var html;
+      if (language) {
+        html = hljs.highlight(language, contents, true).value;
+      } else {
+        // Need to guess.
+        var guess = hljs.highlightAuto(contents);
+        console.log('Guessing language', guess.language, 'for', path);
+        html = guess.value;
+      }
       return codediff.distributeSpans_(html);
     }, function(response, errortype, errordetails) {
       console.warn('Request for', fileUrl, 'failed', errortype, errordetails);
@@ -131,8 +139,8 @@ function applyHighlightingToSide(fileDiv, side) {
   var path = $fileDiv.find('.meta').attr('data-path');
 
   // Don't attempt to highlight a pure add or pure delete. It will fail.
-  if ((side == LEFT && $fileDiv.find('td.base').length == 0) ||
-      (side == RIGHT && $fileDiv.find('td.head').length == 0)) {
+  if ((side == LEFT && $fileDiv.find('td.base:not(.empty-cell)').length == 0) ||
+      (side == RIGHT && $fileDiv.find('td.head:not(.empty-cell)').length == 0)) {
     return { 'success': 'Nothing to do.' };
   }
 
@@ -140,14 +148,16 @@ function applyHighlightingToSide(fileDiv, side) {
   if (!htmlLines) {
     var language = guessLanguage(path);
     if (!language) {
-      console.log('Unable to guess language for', path);
+      console.log('Unable to determine language for', path, 'from extension. Will guess from code.');
+    }
+    if (language == 'txt') {
       return;
     }
     if (language && !hljs.getLanguage(language)) {
       console.warn('Unable to highlight language', language);
       return;
     }
-    return getHighlightedLines(language, getFileUrl(GITHUB_SYNTAX.diff_info, side, path))
+    return getHighlightedLines(language, path, getFileUrl(GITHUB_SYNTAX.diff_info, side, path))
       .then(function(htmlLines) {
         $fileDiv.data('highlight-' + side, htmlLines);
         return applyHighlightingToSide(fileDiv, side);  // try again with a filled cache.
