@@ -56,11 +56,17 @@ function getDiffInfo(spec) {
   } else if ('commit' in spec) {
     // TODO: what about commits with multiple parents?
     var $parentSha = $('.commit-meta .sha[data-hotkey="p"]');
-    if ($parentSha.length != 1) return null;
+    if ($parentSha.length != 1) {
+      var d = $.Deferred();
+      d.reject('Unable to get a unique parent commit SHA.');
+      return d;
+    }
     var m = $parentSha.attr('href').match(/\/([0-9a-f]+)$/);
     if (!m) {
+      var d = $.Deferred();
+      d.reject('Unable to parse commit link ' + $parentSha.attr('href'));
       console.warn('Unable to parse commit link', $parentSha.attr('href'));
-      return null;
+      return d;
     }
     return $.when({
       'left': {
@@ -223,9 +229,14 @@ function applyHighlighting(fileDiv) {
 // better.
 function addCharacterDiffs(fileDiv) {
   $(fileDiv).find('tr:has(.github-syntax-chardiff)').each(function(_, tr) {
-    var $cells = $(tr).find('.github-syntax-chardiff');
-    if ($cells.length != 2) return;
-    $cells.removeClass('github-syntax-chardiff');  // we've got 'em.
+    $(tr).find('.github-syntax-chardiff')
+        .removeClass('github-syntax-chardiff');  // we've got 'em.
+
+    var $cells = $(tr).find('td.blob-code');
+    if ($cells.length != 2) {
+      console.warn('Strange character diff situation in', tr);
+      return;
+    }
 
     // Temporarily remove the line comment buttons, which confuse codediff.js
     var $beforeCell = $($cells.get(0)),
@@ -259,6 +270,8 @@ var inited_spec = '';
 function init() {
   var spec = getSpec();
   if (!spec) {
+    GITHUB_SYNTAX = {};
+    inited_spec = '';
     return;  // Probably not a Pull Request view.
   }
   var this_spec = JSON.stringify(spec);
@@ -267,6 +280,7 @@ function init() {
 
   if ($('.file-diff-split').length == 0) {
     // This is an inline diff view, not a split diff view.
+    console.log('No split diffs found');
     return;
   }
 
