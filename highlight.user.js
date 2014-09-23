@@ -9,6 +9,16 @@
 // Available in console w/ context chrome-extension://ij...obn
 GITHUB_SYNTAX = {};
 
+// ref is either "ref" or "owner:ref". This returns {owner, ref}.
+function parseRef(ref, defaultOwner) {
+  var m = ref.match(/^([^:]+):([^:]+)$/);
+  if (m) {
+    return {owner: m[1], ref: m[2]};
+  } else {
+    return {owner: defaultOwner, ref: ref};
+  }
+};
+
 function getSpec() {
   var loc = document.location;
   if (loc.hostname != 'github.com') return null;
@@ -27,11 +37,27 @@ function getSpec() {
       repo: m[2],
       commit: m[3]
     };
+  } else if (m = p.match(/^\/([^\/]+)\/([^\/]+)\/compare\//)) {
+    // This matches both /compare/foo...bar and /compare/compare (new PR)
+    var owner = m[1], repo = m[2];
+
+    var refs = $('.range .branch-name').map(function(_, el) { return $(el).text().trim() });
+    if (refs.length != 2) return;
+
+    return {
+      owner: m[1],
+      repo: m[2],
+      compareLeft: parseRef(refs[0], owner),
+      compareRight: parseRef(refs[1], owner)
+    };
   }
 
   return null;
 }
 
+// Take the spec as returned by getSpec() and return a deferred object with
+// {owner, repo, sha} for both left and right. The returned deferred is like:
+// {left: {owner, repo, sha}, right: {owner, repo, sha}}.
 function getDiffInfo(spec) {
   if ('pull_number' in spec) {
     var url = 'https://api.github.com/repos/' + spec.owner + '/' + spec.repo + '/pulls/' + spec.pull_number;
@@ -80,6 +106,34 @@ function getDiffInfo(spec) {
         'sha': spec.commit
       }
     });
+  } else if ('compareLeft' in spec) {
+    var deferredSha = function(owner, repo, ref) {
+      var url = 'https://api.github.com/repos/' + owner + '/' + repo + '/git/refs/heads/' + ref;
+      return $.ajax({
+        dataType: "json",
+        url: url,
+        data: null
+      }).then(function(ref_info) {
+        return ref_info.object.sha;
+      });
+    };
+
+    return $.when(deferredSha(spec.compareLeft.owner, spec.repo, spec.compareLeft.ref),
+                  deferredSha(spec.compareRight.owner, spec.repo, spec.compareRight.ref))
+            .then(function(leftSha, rightSha) {
+              return {
+                'left': {
+                  'owner': spec.compareLeft.owner,
+                  'repo': spec.repo,
+                  'sha': leftSha,
+                },
+                'right': {
+                  'owner': spec.compareRight.owner,
+                  'repo': spec.repo,
+                  'sha': rightSha
+                }
+              };
+            });
   }
 }
 
@@ -108,7 +162,7 @@ function guessLanguage(filename) {
     if (ext == 'md') return 'markdown';
     return m[1].toLowerCase();
   };
-  
+
   // Highlighting based purely on file name, e.g. "Makefile".
   m = /(?:.*\/)?([^\/]*)$/.exec(filename);
   if (m && m[1] == 'Makefile') {
