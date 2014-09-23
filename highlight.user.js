@@ -27,9 +27,33 @@ function getSpec() {
       repo: m[2],
       commit: m[3]
     };
+  } else if (m = p.match(/^\/([^\/]+)\/([^\/]+)\/compare\/([^\/]+)\.\.\.([^\/]+)/)) {
+    var owner = m[1], repo = m[2];
+
+    // ref is either "ref" or "owner:ref". This returns {owner, ref}.
+    var parseRef = function(ref) {
+      var m = ref.match(/^([^:]+):([^:]+)$/);
+      if (m) {
+        return {owner: m[1], ref: m[2]};
+      } else {
+        return {owner: owner, ref: ref};
+      }
+    };
+
+    return {
+      owner: m[1],
+      repo: m[2],
+      compareLeft: parseRef(m[3]),
+      compareRight: parseRef(m[4])
+    };
   }
 
   return null;
+}
+
+// array filter, see below.
+function onlyUnique(value, index, self) {
+  return self.indexOf(value) === index;
 }
 
 function getDiffInfo(spec) {
@@ -80,6 +104,39 @@ function getDiffInfo(spec) {
         'sha': spec.commit
       }
     });
+  } else if ('compareLeft' in spec) {
+    var rightShas = $('a.minibutton[href*=blob]').map(function(_, a) {
+        return $(a).attr('href').match(/blob\/([0-9a-f]+)\//)[1]
+    }).toArray().filter(onlyUnique);
+    if (rightShas.length != 1) {
+      var d = $.Deferred();
+      d.reject('Unable to get a unique right SHA ' + JSON.stringify(rightShas));
+      return d;
+    }
+    var rightSha = rightShas[0];
+
+    var left = spec.compareLeft;
+    var url = 'https://api.github.com/repos/' + left.owner + '/' + spec.repo + '/git/refs/heads/' + left.ref;
+    return $.ajax({
+      dataType: "json",
+      url: url,
+      data: null
+    }).then(function(ref_info) {
+      var r = {
+        'left': {
+          'owner': spec.compareLeft.owner,
+          'repo': spec.repo,
+          'sha': ref_info.object.sha,
+        },
+        'right': {
+          'owner': spec.compareRight.owner,
+          'repo': spec.repo,
+          'sha': rightSha
+        }
+      };
+      console.log(r);
+      return r;
+    });
   }
 }
 
@@ -108,7 +165,7 @@ function guessLanguage(filename) {
     if (ext == 'md') return 'markdown';
     return m[1].toLowerCase();
   };
-  
+
   // Highlighting based purely on file name, e.g. "Makefile".
   m = /(?:.*\/)?([^\/]*)$/.exec(filename);
   if (m && m[1] == 'Makefile') {
