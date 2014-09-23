@@ -9,6 +9,16 @@
 // Available in console w/ context chrome-extension://ij...obn
 GITHUB_SYNTAX = {};
 
+// ref is either "ref" or "owner:ref". This returns {owner, ref}.
+function parseRef(ref, defaultOwner) {
+  var m = ref.match(/^([^:]+):([^:]+)$/);
+  if (m) {
+    return {owner: m[1], ref: m[2]};
+  } else {
+    return {owner: defaultOwner, ref: ref};
+  }
+};
+
 function getSpec() {
   var loc = document.location;
   if (loc.hostname != 'github.com') return null;
@@ -27,35 +37,27 @@ function getSpec() {
       repo: m[2],
       commit: m[3]
     };
-  } else if (m = p.match(/^\/([^\/]+)\/([^\/]+)\/compare\/([^\/]+)\.\.\.([^\/]+)/)) {
+  } else if (m = p.match(/^\/([^\/]+)\/([^\/]+)\/compare\//)) {
+    // This matches both /compare/foo...bar and /compare/compare (new PR)
     var owner = m[1], repo = m[2];
 
-    // ref is either "ref" or "owner:ref". This returns {owner, ref}.
-    var parseRef = function(ref) {
-      var m = ref.match(/^([^:]+):([^:]+)$/);
-      if (m) {
-        return {owner: m[1], ref: m[2]};
-      } else {
-        return {owner: owner, ref: ref};
-      }
-    };
+    var refs = $('.range .branch-name').map(function(_, el) { return $(el).text().trim() });
+    if (refs.length != 2) return;
 
     return {
       owner: m[1],
       repo: m[2],
-      compareLeft: parseRef(m[3]),
-      compareRight: parseRef(m[4])
+      compareLeft: parseRef(refs[0], owner),
+      compareRight: parseRef(refs[1], owner)
     };
   }
 
   return null;
 }
 
-// array filter, see below.
-function onlyUnique(value, index, self) {
-  return self.indexOf(value) === index;
-}
-
+// Take the spec as returned by getSpec() and return a deferred object with
+// {owner, repo, sha} for both left and right. The returned deferred is like:
+// {left: {owner, repo, sha}, right: {owner, repo, sha}}.
 function getDiffInfo(spec) {
   if ('pull_number' in spec) {
     var url = 'https://api.github.com/repos/' + spec.owner + '/' + spec.repo + '/pulls/' + spec.pull_number;
@@ -105,38 +107,33 @@ function getDiffInfo(spec) {
       }
     });
   } else if ('compareLeft' in spec) {
-    var rightShas = $('a.minibutton[href*=blob]').map(function(_, a) {
-        return $(a).attr('href').match(/blob\/([0-9a-f]+)\//)[1]
-    }).toArray().filter(onlyUnique);
-    if (rightShas.length != 1) {
-      var d = $.Deferred();
-      d.reject('Unable to get a unique right SHA ' + JSON.stringify(rightShas));
-      return d;
-    }
-    var rightSha = rightShas[0];
+    var deferredSha = function(owner, repo, ref) {
+      var url = 'https://api.github.com/repos/' + owner + '/' + repo + '/git/refs/heads/' + ref;
+      return $.ajax({
+        dataType: "json",
+        url: url,
+        data: null
+      }).then(function(ref_info) {
+        return ref_info.object.sha;
+      });
+    };
 
-    var left = spec.compareLeft;
-    var url = 'https://api.github.com/repos/' + left.owner + '/' + spec.repo + '/git/refs/heads/' + left.ref;
-    return $.ajax({
-      dataType: "json",
-      url: url,
-      data: null
-    }).then(function(ref_info) {
-      var r = {
-        'left': {
-          'owner': spec.compareLeft.owner,
-          'repo': spec.repo,
-          'sha': ref_info.object.sha,
-        },
-        'right': {
-          'owner': spec.compareRight.owner,
-          'repo': spec.repo,
-          'sha': rightSha
-        }
-      };
-      console.log(r);
-      return r;
-    });
+    return $.when(deferredSha(spec.compareLeft.owner, spec.repo, spec.compareLeft.ref),
+                  deferredSha(spec.compareRight.owner, spec.repo, spec.compareRight.ref))
+            .then(function(leftSha, rightSha) {
+              return {
+                'left': {
+                  'owner': spec.compareLeft.owner,
+                  'repo': spec.repo,
+                  'sha': leftSha,
+                },
+                'right': {
+                  'owner': spec.compareRight.owner,
+                  'repo': spec.repo,
+                  'sha': rightSha
+                }
+              };
+            });
   }
 }
 
